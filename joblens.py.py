@@ -132,7 +132,7 @@ Return them line by line with no extra explanation.
         return []
 
 def transcribe_audio_to_text(audio_bytes):
-    """Transcribe audio using SpeechRecognition + Google Web Speech API."""
+    """Transcribe audio using SpeechRecognition + Google Web Speech API with better handling."""
     recognizer = sr.Recognizer()
     text_output = ""
     temp_name = None
@@ -144,15 +144,23 @@ def transcribe_audio_to_text(audio_bytes):
 
         with sr.AudioFile(temp_name) as source:
             recognizer.adjust_for_ambient_noise(source)
-            audio_data = recognizer.record(source)
+            audio_data = recognizer.listen(source, timeout=10, phrase_time_limit=30)  # Improved handling
 
         text_output = recognizer.recognize_google(audio_data)
+
+    except sr.WaitTimeoutError:
+        text_output = "⚠️ No speech detected. Please try again."
+    except sr.RequestError:
+        text_output = "⚠️ Could not reach Google Speech API. Check your internet connection."
+    except sr.UnknownValueError:
+        text_output = "⚠️ Sorry, I couldn't understand the audio."
     except Exception as e:
         text_output = f"Error transcribing audio: {e}"
     finally:
         if temp_name and os.path.exists(temp_name):
             os.remove(temp_name)
     return text_output
+
 
 def evaluate_answer(answer, question):
     """Provide more detailed feedback with temperature=0 for clarity."""

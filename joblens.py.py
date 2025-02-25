@@ -15,7 +15,7 @@ from streamlit_lottie import st_lottie
 st.set_page_config(page_title="JobLens – Interview Assistant", layout="wide")
 
 # 2) VALIDATE OPENAI API KEY
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = st.secrets["openai_api_key"]
 if not OPENAI_API_KEY:
     st.error("🚨 OpenAI API Key is missing! Please set it as an environment variable 'OPENAI_API_KEY'.")
     st.stop()

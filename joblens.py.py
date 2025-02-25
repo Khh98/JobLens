@@ -101,7 +101,7 @@ def extract_text_from_file(uploaded_file):
     except Exception as e:
         st.error(f"Error reading file: {e}")
     return text
-
+@st.cache_data()
 def generate_interview_questions(resume_text, job_description, job_position, n=5):
     """
     Generate interview questions via OpenAI's ChatCompletion.
@@ -136,7 +136,7 @@ Return them line by line with no extra explanation.
     except Exception as e:
         st.error(f"Error generating questions: {e}")
         return []
-
+@st.cache_data()
 def transcribe_audio_to_text(audio_bytes):
     """
     Transcribe audio using SpeechRecognition + Google Web Speech API.

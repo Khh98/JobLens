@@ -78,14 +78,11 @@ with st.sidebar:
 
 # 6) HELPER FUNCTIONS
 def extract_text_from_file(uploaded_file):
-    """
-    Extract text from a PDF or DOCX file and return as a string.
-    """
+    """Extract text from PDF or DOCX file."""
     if not uploaded_file:
         return ""
     text = ""
     file_type = uploaded_file.type
-
     try:
         if file_type == "application/pdf":
             pdf_reader = PyPDF2.PdfReader(uploaded_file)
@@ -103,9 +100,7 @@ def extract_text_from_file(uploaded_file):
     return text
 
 def generate_interview_questions(resume_text, job_description, job_position, n=5):
-    """
-    Generate interview questions via OpenAI's ChatCompletion.
-    """
+    """Generate interview questions via OpenAI's ChatCompletion."""
     prompt = f"""
 You are an AI assistant helping a recruiter interview a candidate.
 
@@ -120,7 +115,6 @@ Position: {job_position}
 Generate {n} direct, concise, and relevant interview questions.
 Return them line by line with no extra explanation.
 """
-
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -138,9 +132,7 @@ Return them line by line with no extra explanation.
         return []
 
 def transcribe_audio_to_text(audio_bytes):
-    """
-    Transcribe audio using SpeechRecognition + Google Web Speech API.
-    """
+    """Transcribe audio using SpeechRecognition + Google Web Speech API."""
     recognizer = sr.Recognizer()
     text_output = ""
     temp_name = None
@@ -163,10 +155,7 @@ def transcribe_audio_to_text(audio_bytes):
     return text_output
 
 def evaluate_answer(answer, question):
-    """
-    Evaluate the candidate's answer using OpenAI ChatCompletion.
-    Provide a rating (1-5) and short feedback.
-    """
+    """Provide more detailed feedback with temperature=0 for clarity."""
     if not answer.strip():
         return "⚠️ No answer provided."
 
@@ -176,21 +165,28 @@ You are an AI HR assistant.
 Question: {question}
 Candidate's answer: {answer}
 
-Please rate the answer from 1 to 5 (5 = best) and provide concise feedback.
+Please provide a thorough evaluation focusing on:
+- Strengths
+- Weaknesses
+- Clarity & relevance
+- Completeness & correctness
+
+Afterwards, provide an overall rating from 1 to 5 (5 = best),
+and at least 2 sentences of constructive feedback for improvement.
+
 Return in this format:
 
 Score: X
-Feedback: <one or two sentences>
+Feedback: <Detailed feedback here>
 """
-
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are an AI HR assistant evaluating interview answers."},
+                {"role": "system", "content": "You are a detailed HR assistant evaluating interview answers."},
                 {"role": "user", "content": eval_prompt},
             ],
-            temperature=0.7,
+            temperature=0.0,  # ZERO for more direct, less creative feedback
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -206,13 +202,11 @@ if generate_button:
         st.sidebar.error("⚠️ Please upload a CV.")
     else:
         cv_text = extract_text_from_file(uploaded_cv)
-        with st.spinner("Generating interview questions..."):
-            questions = generate_interview_questions(cv_text, job_desc, job_position, n=5)
-            if questions:
-                st.session_state["questions"] = questions
-                st.session_state["question_index"] = 0
-                st.session_state["feedback_list"] = []
-                st.sidebar.success("✅ 5 questions generated! Scroll down to start the interview.")
+        st.session_state["questions"] = generate_interview_questions(cv_text, job_desc, job_position, n=5)
+        if st.session_state["questions"]:
+            st.session_state["question_index"] = 0
+            st.session_state["feedback_list"] = []
+            st.sidebar.success("✅ 5 questions generated! Scroll down to start the interview.")
 
 # 8) INTERVIEW Q&A SECTION
 if "questions" in st.session_state and st.session_state["questions"]:
@@ -226,23 +220,36 @@ if "questions" in st.session_state and st.session_state["questions"]:
 
         st.write("🎙️ **Record your answer below:**")
         audio_data = st_audiorec()
+        st.write("*(Click the mic icon to start/stop recording.)*")
 
-        if st.button("✅ Submit Answer"):
-            if not audio_data:
-                st.warning("Please record your answer before clicking submit.")
-            else:
-                with st.spinner("Transcribing your response..."):
+        submit_col, restart_col = st.columns([1,1])
+        with submit_col:
+            if st.button("✅ Submit Answer"):
+                # CHECK AUDIO
+                if not audio_data:
+                    st.warning("Please record your answer before clicking submit.")
+                else:
+                    # TRANSCRIBE
+                    st.write("Transcribing your response...")
                     answer_text = transcribe_audio_to_text(audio_data)
-                st.write(f"**Transcribed Answer:** {answer_text}")
+                    st.write(f"**Transcribed Answer:** {answer_text}")
 
-                with st.spinner("Evaluating your answer..."):
+                    # EVALUATE
+                    st.write("Evaluating your answer...")
                     feedback = evaluate_answer(answer_text, current_question)
 
-                st.session_state["feedback_list"].append((current_question, answer_text, feedback))
+                    st.session_state["feedback_list"].append((current_question, answer_text, feedback))
 
-                # Move to next question
-                st.session_state["question_index"] += 1
-                st.rerun()
+                    # MOVE TO NEXT QUESTION
+                    st.session_state["question_index"] += 1
+                    st.experimental_rerun()
+
+        with restart_col:
+            if st.button("🔄 Restart Interview"):
+                for key in ["questions", "question_index", "feedback_list"]:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.experimental_rerun()
 
     else:
         st.success("✅ Interview complete! See your feedback below:")
@@ -253,9 +260,10 @@ if "questions" in st.session_state and st.session_state["questions"]:
             st.markdown("---")
 
         if st.button("🔄 Restart Interview"):
-            del st.session_state["questions"]
-            del st.session_state["question_index"]
-            del st.session_state["feedback_list"]
-            st.rerun()
+            for key in ["questions", "question_index", "feedback_list"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.experimental_rerun()
 else:
     st.info("Configure your interview in the sidebar and click 'Generate Questions' to begin.")
+

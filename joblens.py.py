@@ -242,14 +242,14 @@ if "questions" in st.session_state and st.session_state["questions"]:
 
                     # MOVE TO NEXT QUESTION
                     st.session_state["question_index"] += 1
-                    st.experimental_rerun()
+                    st.rerun()
 
         with restart_col:
             if st.button("🔄 Restart Interview"):
                 for key in ["questions", "question_index", "feedback_list"]:
                     if key in st.session_state:
                         del st.session_state[key]
-                st.experimental_rerun()
+                st.rerun()
 
     else:
         st.success("✅ Interview complete! See your feedback below:")
@@ -263,7 +263,7 @@ if "questions" in st.session_state and st.session_state["questions"]:
             for key in ["questions", "question_index", "feedback_list"]:
                 if key in st.session_state:
                     del st.session_state[key]
-            st.experimental_rerun()
+            st.rerun()
 else:
     st.info("Configure your interview in the sidebar and click 'Generate Questions' to begin.")
 
